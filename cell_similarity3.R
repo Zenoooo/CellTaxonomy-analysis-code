@@ -1,0 +1,67 @@
+#cell similarity
+library(plyr)
+library(stringr)
+#setwd("D:/R/cell taxonomy/13_cell_type_database/01_data/03_all/")
+options(stringsAsFactors = F)
+
+cell_taxonomy_cell_tissue_v5 = read.table("cell_taxonomy_final.txt",sep="\t",header=T,quote="",fill=T)
+
+cell_taxonomy_3 = cell_taxonomy_cell_tissue_v5
+
+
+all_cell = unique(cell_taxonomy_3[,c("Specific_Cell_Ontology_ID")])
+
+all_cell_Gene = unique(cell_taxonomy_3[,c("Specific_Cell_Ontology_ID","Gene_ENTREZID2","Tissue_UberonOntology_ID2")])
+
+cell_similarity_Tissue_UberonOntology_ID2 = ddply(all_cell_Gene,"Specific_Cell_Ontology_ID",function(df){
+
+result_tmp1 = ddply(df,"Tissue_UberonOntology_ID2",function(df2){
+	
+	Cell = unique(df2$Specific_Cell_Ontology_ID)
+	Tissue_UberonOntology_ID2 = unique(df2$Tissue_UberonOntology_ID2)
+	Cell = Cell[!is.na(Cell)]
+	Tissue_UberonOntology_ID2 = Tissue_UberonOntology_ID2[!is.na(Tissue_UberonOntology_ID2)]
+	other_cell = all_cell[!all_cell %in% Cell]
+	
+	other_cell = as.data.frame(other_cell)
+	other_cell$score=NA
+	
+	this_one_cell_to_other_cell = adply(other_cell,1,function(x){	
+	cell_this =x[,1]
+	Cell_marker = unique(df2$Gene_ENTREZID2)
+	other_cell_marker = unique(all_cell_Gene[all_cell_Gene$Specific_Cell_Ontology_ID==cell_this & all_cell_Gene$Tissue_UberonOntology_ID2 == Tissue_UberonOntology_ID2,"Gene_ENTREZID2"])
+	
+	Cell_marker=Cell_marker[!is.na(Cell_marker)]
+	other_cell_marker=other_cell_marker[!is.na(other_cell_marker)]
+	
+	all_Cell_marker_num = length(unique(c(Cell_marker,other_cell_marker)))
+	common_num = length(intersect(Cell_marker, other_cell_marker))
+	score = common_num/all_Cell_marker_num
+	
+	x$score = score
+	return(x)
+	})
+	
+	return(this_one_cell_to_other_cell)
+	
+	})
+
+return(result_tmp1)
+})
+
+cell_similarity_Tissue_UberonOntology_ID2$Species = "All"
+
+
+cell_similarity_Tissue_UberonOntology_ID2 = cell_similarity_Tissue_UberonOntology_ID2[cell_similarity_Tissue_UberonOntology_ID2$score>0,]
+
+cell_similarity_Tissue_UberonOntology_ID2$score = signif(cell_similarity_Tissue_UberonOntology_ID2$score,2)
+
+
+
+write.table(cell_similarity_Tissue_UberonOntology_ID2,"cell_similarity_Tissue_UberonOntology_ID2.txt",sep="\t",quote=F,col.names = T,row.names = F)
+
+
+
+
+
+
